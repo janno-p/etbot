@@ -17,9 +17,9 @@ pub struct Discord {
 
 #[allow(unused)]
 #[derive(Debug, Deserialize)]
-struct PotatoFeeder {
+pub struct PotatoFeeder {
     #[serde(alias = "channel-id")]
-    channel_id: u64,
+    pub channel_id: u64,
     #[serde(deserialize_with = "deserialize_duration")]
     interval: Duration,
     amount: u32,
@@ -31,7 +31,7 @@ pub struct Settings {
     pub database: Database,
     pub discord: Discord,
     #[serde(alias = "potato-feeder")]
-    potato_feeder: PotatoFeeder,
+    pub potato_feeder: PotatoFeeder,
 }
 
 impl Settings {

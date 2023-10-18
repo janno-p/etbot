@@ -1,13 +1,16 @@
-use serenity::prelude::TypeMapKey;
+use serenity::{model::prelude::ChannelId, prelude::TypeMapKey};
 
 pub struct Bot {
-    #[allow(unused)]
     pub database: sqlx::SqlitePool,
+    pub potato_channel_id: ChannelId,
 }
 
 impl Bot {
-    pub fn new(database: sqlx::SqlitePool) -> Self {
-        Self { database }
+    pub fn new(database: sqlx::SqlitePool, potato_channel_id: ChannelId) -> Self {
+        Self {
+            database,
+            potato_channel_id,
+        }
     }
 }
 
