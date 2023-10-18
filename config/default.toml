@@ -1,0 +1,10 @@
+[database]
+filename = "database/database.sqlite"
+
+[discord]
+token = ""
+
+[potato-feeder]
+channel-id = 0
+interval = "7d"
+amount = 2000

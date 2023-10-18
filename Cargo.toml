@@ -1,0 +1,42 @@
+[package]
+name = "etbot"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dotenv = "0.15.0"
+duration-str = "0.7.0"
+
+[dependencies.config]
+version = "0.13.1"
+features = [
+    "toml"
+]
+
+[dependencies.serde]
+version = "1.0.189"
+
+[dependencies.serenity]
+version = "0.11.6"
+default-features = false
+features = [
+    "cache",
+    "gateway",
+    "rustls_backend",
+    "standard_framework"
+]
+
+[dependencies.sqlx]
+version = "0.7.2"
+features = [
+    "runtime-tokio-rustls",
+    "sqlite",
+]
+
+[dependencies.tokio]
+version = "1.33.0"
+features = [
+    "macros",
+    "rt-multi-thread",
+    "signal"
+]
