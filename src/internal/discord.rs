@@ -1,21 +1,15 @@
 use serenity::{
-    framework::{standard::macros::group, StandardFramework},
-    prelude::GatewayIntents,
+    framework::StandardFramework,
+    model::prelude::ChannelId,
+    prelude::{Context, GatewayIntents},
+    utils::Color,
     Client,
 };
 
-use crate::commands::{flip::*, help::HELP, ping::*};
+use crate::commands::{help::HELP, GENERAL_GROUP, POTATOGAME_GROUP};
 
 use super::handler::Handler;
 use super::{bot::Bot, settings::Settings};
-
-#[group]
-#[commands(ping)]
-struct General;
-
-#[group]
-#[commands(flip)]
-struct PotatoGame;
 
 pub async fn start_client(bot: Bot, handler: Handler, settings: &Settings) {
     let framework = StandardFramework::new()
@@ -45,4 +39,22 @@ pub async fn start_client(bot: Bot, handler: Handler, settings: &Settings) {
     if let Err(why) = client.start().await {
         println!("An error occurred while running the client: {:?}", why);
     }
+}
+
+pub async fn success_message(ctx: &Context, channel_id: &ChannelId, message: String) {
+    channel_id
+        .send_message(ctx, |m| {
+            m.add_embed(|e| e.description(message).color(Color::DARK_GREEN))
+        })
+        .await
+        .ok();
+}
+
+pub async fn failure_message(ctx: &Context, channel_id: &ChannelId, message: String) {
+    channel_id
+        .send_message(ctx, |m| {
+            m.add_embed(|e| e.description(message).color(Color::RED))
+        })
+        .await
+        .ok();
 }

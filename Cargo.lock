@@ -447,6 +447,7 @@ dependencies = [
  "config",
  "dotenv",
  "duration-str",
+ "rand",
  "serde",
  "serenity",
  "sqlx",
