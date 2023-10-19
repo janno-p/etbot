@@ -15,6 +15,14 @@ impl EventHandler for Handler {
         let data = ctx.data.read().await;
         let bot = data.get::<Bot>().unwrap();
 
+        crate::commands::feeder::start_feeder(
+            ctx.clone(),
+            bot.potato_channel_id,
+            bot.potato_amount,
+            bot.database.clone(),
+        )
+        .await;
+
         let message =
             CreateMessage::new().content("Oled valmis, Jaanus? Sõidame! :oncoming_automobile:");
 

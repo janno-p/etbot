@@ -1,6 +1,10 @@
 use serenity::{
+    all::Message,
     builder::{CreateEmbed, CreateMessage},
-    framework::StandardFramework,
+    framework::{
+        standard::{macros::hook, CommandError},
+        StandardFramework,
+    },
     model::{prelude::ChannelId, Color},
     prelude::{Context, GatewayIntents},
     Client,
@@ -11,11 +15,27 @@ use crate::commands::{GENERAL_GROUP, HELP, POTATOGAME_GROUP};
 use super::handler::Handler;
 use super::{bot::Bot, settings::Settings};
 
+#[hook]
+async fn before_hook(ctx: &Context, msg: &Message, _: &str) -> bool {
+    let data = ctx.data.read().await;
+    let bot = data.get::<Bot>().unwrap();
+    msg.channel_id == bot.potato_channel_id
+}
+
+#[hook]
+async fn after_hook(_: &Context, _: &Message, cmd_name: &str, error: Result<(), CommandError>) {
+    if let Err(why) = error {
+        println!("Error in {}: {:?}", cmd_name, why);
+    }
+}
+
 pub async fn start_client(bot: Bot, handler: Handler, settings: &Settings) {
     let framework = StandardFramework::new()
         .help(&HELP)
         .group(&GENERAL_GROUP)
-        .group(&POTATOGAME_GROUP);
+        .group(&POTATOGAME_GROUP)
+        .after(after_hook)
+        .before(before_hook);
 
     framework.configure(|c| c.prefix("!").on_mention(None));
 

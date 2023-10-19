@@ -1,3 +1,4 @@
+use chrono::Utc;
 use serenity::model::prelude::UserId;
 use sqlx::{Pool, Sqlite};
 
@@ -25,7 +26,7 @@ pub async fn migrate(database: &Pool<Sqlite>) {
 pub async fn find_player(user_id: &String, database: &Pool<Sqlite>) -> Option<Player> {
     sqlx::query_as!(
         Player,
-        "SELECT discord_user_id, balance, version FROM players WHERE discord_user_id = ?",
+        "SELECT discord_user_id, balance, last_feed_ts, version FROM players WHERE discord_user_id = ?",
         user_id
     )
     .fetch_optional(database)
@@ -33,17 +34,29 @@ pub async fn find_player(user_id: &String, database: &Pool<Sqlite>) -> Option<Pl
     .unwrap_or(None)
 }
 
+pub async fn find_unfeeded_players(ts: i64, database: &Pool<Sqlite>) -> Vec<String> {
+    sqlx::query_scalar!(
+        "SELECT discord_user_id FROM players WHERE last_feed_ts < ?",
+        ts
+    )
+    .fetch_all(database)
+    .await
+    .unwrap_or(vec![])
+}
+
 pub async fn create_player(user_id: &String, database: &Pool<Sqlite>) -> Option<Player> {
     let player = Player {
         discord_user_id: user_id.to_string(),
         balance: 5000,
+        last_feed_ts: Utc::now().timestamp(),
         version: 1,
     };
 
     sqlx::query!(
-        "INSERT INTO players (discord_user_id, balance, version) VALUES (?, ?, ?)",
+        "INSERT INTO players (discord_user_id, balance, last_feed_ts, version) VALUES (?, ?, ?, ?)",
         player.discord_user_id,
         player.balance,
+        player.last_feed_ts,
         player.version
     )
     .execute(database)
@@ -56,8 +69,9 @@ pub async fn update_player(player: &mut Player, database: &Pool<Sqlite>) -> bool
     player.version += 1;
 
     sqlx::query!(
-        "UPDATE players SET balance = ?, version = ? WHERE discord_user_id = ? AND version = ?",
+        "UPDATE players SET balance = ?, last_feed_ts = ?, version = ? WHERE discord_user_id = ? AND version = ?",
         player.balance,
+        player.last_feed_ts,
         player.version,
         player.discord_user_id,
         current_version
@@ -71,7 +85,7 @@ pub async fn update_player(player: &mut Player, database: &Pool<Sqlite>) -> bool
 pub async fn load_leaderboard(database: &Pool<Sqlite>) -> Vec<(UserId, i64, usize, usize)> {
     sqlx::query_as!(
         Player,
-        "SELECT discord_user_id, balance, version FROM players ORDER BY balance DESC"
+        "SELECT discord_user_id, balance, last_feed_ts, version FROM players ORDER BY balance DESC"
     )
     .fetch_all(database)
     .await

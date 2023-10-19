@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chrono = "0.4.31"
 dotenv = "0.15.0"
 duration-str = "0.7.0"
 rand = "0.8.5"

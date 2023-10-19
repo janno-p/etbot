@@ -18,7 +18,11 @@ async fn main() {
     let database = database::init(&settings).await;
     database::migrate(&database).await;
 
-    let bot = Bot::new(database, ChannelId::new(settings.potato_feeder.channel_id));
+    let bot = Bot::new(
+        database,
+        ChannelId::new(settings.potato_feeder.channel_id),
+        settings.potato_feeder.amount,
+    );
 
     discord::start_client(bot, Handler, &settings).await;
 }

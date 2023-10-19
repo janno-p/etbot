@@ -3,6 +3,8 @@ use serenity::framework::standard::macros::group;
 mod errors;
 mod shared;
 
+pub mod feeder;
+
 mod balance;
 mod flip;
 mod give;

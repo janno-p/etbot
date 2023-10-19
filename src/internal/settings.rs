@@ -22,7 +22,7 @@ pub struct PotatoFeeder {
     pub channel_id: u64,
     #[serde(deserialize_with = "deserialize_duration")]
     interval: Duration,
-    amount: u32,
+    pub amount: i64,
 }
 
 #[allow(unused)]
