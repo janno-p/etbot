@@ -4,7 +4,10 @@ use serenity::{
     prelude::{Context, Mentionable},
 };
 
-use crate::internal::{bot::Bot, database, discord};
+use crate::{
+    commands::shared,
+    internal::{bot::Bot, database, discord},
+};
 
 #[command]
 #[aliases("$$")]
@@ -25,16 +28,9 @@ pub async fn balance(ctx: &Context, msg: &Message) -> CommandResult {
             let message = format!("{} kontol on {} :potato:.", user_mention, player.balance);
             discord::success_message(ctx, &msg.channel_id, message).await;
         }
-        None => match database::create_player(&user_id, &bot.database).await {
-            Some(_) => {
-                let message = format!("{} pole varasemalt kartulikasiinos mänginud, viskasin seemneks kontole 5000 :potato:.", user_mention);
-                discord::success_message(ctx, &msg.channel_id, message).await;
-            }
-            None => {
-                let message = format!("UPS!! Proovi uuesti, {}!", user_mention);
-                discord::failure_message(ctx, &msg.channel_id, message).await;
-            }
-        },
+        None => {
+            shared::create_new_player(ctx, &msg.author.id, &msg.channel_id, &bot.database).await?;
+        }
     }
 
     Ok(())

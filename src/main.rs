@@ -14,12 +14,11 @@ async fn main() {
     dotenv().ok();
 
     let settings = Settings::new().expect("Could not load bot settings");
-    println!("{:?}", settings);
 
     let database = database::init(&settings).await;
     database::migrate(&database).await;
 
-    let bot = Bot::new(database, ChannelId(settings.potato_feeder.channel_id));
+    let bot = Bot::new(database, ChannelId::new(settings.potato_feeder.channel_id));
 
     discord::start_client(bot, Handler, &settings).await;
 }

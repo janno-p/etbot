@@ -18,7 +18,9 @@ features = [
 version = "1.0.189"
 
 [dependencies.serenity]
-version = "0.11.6"
+git = "https://github.com/serenity-rs/serenity"
+branch = "next"
+# version = "0.11.6"
 default-features = false
 features = [
     "cache",

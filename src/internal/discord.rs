@@ -1,22 +1,23 @@
 use serenity::{
+    builder::{CreateEmbed, CreateMessage},
     framework::StandardFramework,
-    model::prelude::ChannelId,
+    model::{prelude::ChannelId, Color},
     prelude::{Context, GatewayIntents},
-    utils::Color,
     Client,
 };
 
-use crate::commands::{help::HELP, GENERAL_GROUP, POTATOGAME_GROUP};
+use crate::commands::{GENERAL_GROUP, HELP, POTATOGAME_GROUP};
 
 use super::handler::Handler;
 use super::{bot::Bot, settings::Settings};
 
 pub async fn start_client(bot: Bot, handler: Handler, settings: &Settings) {
     let framework = StandardFramework::new()
-        .configure(|c| c.prefix("!").on_mention(None))
         .help(&HELP)
         .group(&GENERAL_GROUP)
         .group(&POTATOGAME_GROUP);
+
+    framework.configure(|c| c.prefix("!").on_mention(None));
 
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
 
@@ -33,7 +34,7 @@ pub async fn start_client(bot: Bot, handler: Handler, settings: &Settings) {
         tokio::signal::ctrl_c()
             .await
             .expect("Could not register ctrl+c handler");
-        shard_manager.lock().await.shutdown_all().await;
+        shard_manager.shutdown_all().await;
     });
 
     if let Err(why) = client.start().await {
@@ -42,19 +43,23 @@ pub async fn start_client(bot: Bot, handler: Handler, settings: &Settings) {
 }
 
 pub async fn success_message(ctx: &Context, channel_id: &ChannelId, message: String) {
-    channel_id
-        .send_message(ctx, |m| {
-            m.add_embed(|e| e.description(message).color(Color::DARK_GREEN))
-        })
-        .await
-        .ok();
+    let embed = CreateEmbed::new()
+        .description(message)
+        .color(Color::DARK_GREEN);
+
+    let builder = CreateMessage::new().embed(embed);
+
+    if let Err(why) = channel_id.send_message(ctx, builder).await {
+        println!("Error sending message: {why:?}");
+    }
 }
 
 pub async fn failure_message(ctx: &Context, channel_id: &ChannelId, message: String) {
-    channel_id
-        .send_message(ctx, |m| {
-            m.add_embed(|e| e.description(message).color(Color::RED))
-        })
-        .await
-        .ok();
+    let embed = CreateEmbed::new().description(message).color(Color::RED);
+
+    let builder = CreateMessage::new().embed(embed);
+
+    if let Err(why) = channel_id.send_message(ctx, builder).await {
+        println!("Error sending message: {why:?}");
+    }
 }

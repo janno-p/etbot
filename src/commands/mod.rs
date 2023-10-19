@@ -1,18 +1,27 @@
 use serenity::framework::standard::macros::group;
 
-pub mod balance;
-pub mod flip;
-pub mod help;
-pub mod ping;
+mod errors;
+mod shared;
+
+mod balance;
+mod flip;
+mod give;
+mod help;
+mod leaderboard;
+mod ping;
 
 use self::balance::*;
 use self::flip::*;
+use self::give::*;
+use self::leaderboard::*;
 use self::ping::*;
+
+pub use self::help::HELP;
 
 #[group]
 #[commands(ping)]
 struct General;
 
 #[group]
-#[commands(balance, flip)]
+#[commands(balance, flip, give, leaderboard)]
 struct PotatoGame;

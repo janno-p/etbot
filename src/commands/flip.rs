@@ -9,6 +9,8 @@ use serenity::{
 
 use crate::internal::{bot::Bot, database, discord, model::Player};
 
+use super::{errors::PotatoGameError, shared};
+
 #[derive(Debug)]
 enum BetAmount {
     Specific(i64),
@@ -108,18 +110,9 @@ async fn process(
 
     let mut player = match player {
         Some(player) => player,
-        None => match database::create_player(&user_id, &bot.database).await {
-            Some(player) => {
-                let message = format!("{} pole varasemalt kartulikasiinos mänginud, viskasin seemneks kontole 5000 :potato:.", user_mention);
-                discord::success_message(ctx, &msg.channel_id, message).await;
-                player
-            }
-            None => {
-                let message = format!("UPS!! Proovi uuesti, {}!", user_mention);
-                discord::failure_message(ctx, &msg.channel_id, message).await;
-                return Ok(());
-            }
-        },
+        None => {
+            shared::create_new_player(ctx, &msg.author.id, &msg.channel_id, &bot.database).await?
+        }
     };
 
     let amount = calculate_amount(bet_amount, &player);
@@ -153,9 +146,7 @@ async fn process(
     }
 
     if !database::update_player(&mut player, &bot.database).await {
-        let message = format!("UPS!! Proovi uuesti, {}!", user_mention);
-        discord::failure_message(ctx, &msg.channel_id, message).await;
-        return Ok(());
+        return Err(Box::new(PotatoGameError::ConcurrencyError));
     }
 
     if !is_win {
