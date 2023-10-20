@@ -1,4 +1,4 @@
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Player {
     pub discord_user_id: String,
     pub balance: i64,

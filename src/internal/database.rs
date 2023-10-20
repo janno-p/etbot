@@ -1,9 +1,11 @@
 use chrono::Utc;
 use serenity::model::prelude::UserId;
 use sqlx::{Pool, Sqlite};
+use tracing::instrument;
 
 use super::{model::Player, settings::Settings};
 
+#[instrument]
 pub async fn init(settings: &Settings) -> Pool<Sqlite> {
     sqlx::sqlite::SqlitePoolOptions::new()
         .max_connections(5)
@@ -16,6 +18,7 @@ pub async fn init(settings: &Settings) -> Pool<Sqlite> {
         .expect("Could not connect to database")
 }
 
+#[instrument]
 pub async fn migrate(database: &Pool<Sqlite>) {
     sqlx::migrate!("./migrations")
         .run(database)
@@ -23,6 +26,7 @@ pub async fn migrate(database: &Pool<Sqlite>) {
         .expect("Could not run database migrations");
 }
 
+#[instrument]
 pub async fn find_player(user_id: &String, database: &Pool<Sqlite>) -> Option<Player> {
     sqlx::query_as!(
         Player,
@@ -34,6 +38,7 @@ pub async fn find_player(user_id: &String, database: &Pool<Sqlite>) -> Option<Pl
     .unwrap_or(None)
 }
 
+#[instrument]
 pub async fn find_unfeeded_players(ts: i64, database: &Pool<Sqlite>) -> Vec<String> {
     sqlx::query_scalar!(
         "SELECT discord_user_id FROM players WHERE last_feed_ts < ?",
@@ -44,6 +49,7 @@ pub async fn find_unfeeded_players(ts: i64, database: &Pool<Sqlite>) -> Vec<Stri
     .unwrap_or(vec![])
 }
 
+#[instrument]
 pub async fn create_player(user_id: &String, database: &Pool<Sqlite>) -> Option<Player> {
     let player = Player {
         discord_user_id: user_id.to_string(),
@@ -64,6 +70,7 @@ pub async fn create_player(user_id: &String, database: &Pool<Sqlite>) -> Option<
     .map_or(None, |_| Some(player))
 }
 
+#[instrument]
 pub async fn update_player(player: &mut Player, database: &Pool<Sqlite>) -> bool {
     let current_version = player.version;
     player.version += 1;
@@ -82,6 +89,7 @@ pub async fn update_player(player: &mut Player, database: &Pool<Sqlite>) -> bool
     .map_or(false, |result| result.rows_affected() > 0)
 }
 
+#[instrument]
 pub async fn load_leaderboard(database: &Pool<Sqlite>) -> Vec<(UserId, i64, usize, usize)> {
     sqlx::query_as!(
         Player,

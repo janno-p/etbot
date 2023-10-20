@@ -5,9 +5,11 @@ use serenity::{
     prelude::{Context, Mentionable},
 };
 use sqlx::{Pool, Sqlite};
+use tracing::{instrument, info, error};
 
 use crate::internal::database;
 
+#[instrument]
 pub async fn start_feeder(
     ctx: Context,
     channel_id: ChannelId,
@@ -19,7 +21,7 @@ pub async fn start_feeder(
         loop {
             interval_timer.tick().await;
 
-            println!("Checking for the time to feed potatoes ...");
+            info!("Checking for the time to feed potatoes ...");
 
             channel_id.start_typing(&ctx.http);
 
@@ -35,7 +37,7 @@ pub async fn start_feeder(
                 .unwrap();
 
             for user_id in database::find_unfeeded_players(dt.timestamp(), &database).await {
-                println!("Feeding potatoes to user {} ...", user_id);
+                info!("Feeding potatoes to user {} ...", user_id);
                 loop {
                     let mut player = database::find_player(&user_id, &database).await.unwrap();
                     player.balance += amount;
@@ -52,12 +54,12 @@ pub async fn start_feeder(
                             )
                             .await
                         {
-                            println!("Error sending message: {why:?}");
+                            error!("Error sending message: {why:?}");
                         }
                         break;
                     }
                 }
-                println!("User {} has much more potatoes now", user_id);
+                info!("User {} has much more potatoes now", user_id);
             }
         }
     });

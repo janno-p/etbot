@@ -10,6 +10,7 @@ use serenity::{
     model::{prelude::ChannelId, Color},
     prelude::{Context, GatewayIntents},
 };
+use tracing::{instrument, error};
 
 use crate::commands::{GENERAL_GROUP, HELP, POTATOGAME_GROUP};
 
@@ -17,6 +18,7 @@ use super::handler::Handler;
 use super::{bot::Bot, settings::Settings};
 
 #[hook]
+#[instrument]
 async fn before_hook(ctx: &Context, msg: &Message, _: &str) -> bool {
     let data = ctx.data.read().await;
     let bot = data.get::<Bot>().unwrap();
@@ -24,12 +26,14 @@ async fn before_hook(ctx: &Context, msg: &Message, _: &str) -> bool {
 }
 
 #[hook]
-async fn after_hook(_: &Context, _: &Message, cmd_name: &str, error: Result<(), CommandError>) {
-    if let Err(why) = error {
-        println!("Error in {}: {:?}", cmd_name, why);
+#[instrument]
+async fn after_hook(_: &Context, _: &Message, cmd_name: &str, err: Result<(), CommandError>) {
+    if let Err(why) = err {
+        error!("Error in {}: {:?}", cmd_name, why);
     }
 }
 
+#[instrument]
 pub async fn start_client(bot: Bot, handler: Handler, settings: &Settings) {
     let framework = StandardFramework::new()
         .help(&HELP)
@@ -64,10 +68,11 @@ pub async fn start_client(bot: Bot, handler: Handler, settings: &Settings) {
     });
 
     if let Err(why) = client.start().await {
-        println!("An error occurred while running the client: {:?}", why);
+        error!("An error occurred while running the client: {:?}", why);
     }
 }
 
+#[instrument]
 pub async fn success_message(ctx: &Context, channel_id: &ChannelId, message: String) {
     let embed = CreateEmbed::new()
         .description(message)
@@ -76,16 +81,17 @@ pub async fn success_message(ctx: &Context, channel_id: &ChannelId, message: Str
     let builder = CreateMessage::new().embed(embed);
 
     if let Err(why) = channel_id.send_message(ctx, builder).await {
-        println!("Error sending message: {why:?}");
+        error!("Error sending message: {why:?}");
     }
 }
 
+#[instrument]
 pub async fn failure_message(ctx: &Context, channel_id: &ChannelId, message: String) {
     let embed = CreateEmbed::new().description(message).color(Color::RED);
 
     let builder = CreateMessage::new().embed(embed);
 
     if let Err(why) = channel_id.send_message(ctx, builder).await {
-        println!("Error sending message: {why:?}");
+        error!("Error sending message: {why:?}");
     }
 }

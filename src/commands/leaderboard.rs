@@ -4,6 +4,7 @@ use serenity::{
     model::{prelude::Message, Color},
     prelude::Context,
 };
+use tracing::error;
 
 use crate::internal::{bot::Bot, database};
 
@@ -49,7 +50,7 @@ pub async fn leaderboard(ctx: &Context, msg: &Message) -> CommandResult {
     let message = CreateMessage::new().embed(embed);
 
     if let Err(why) = msg.channel_id.send_message(ctx, message).await {
-        println!("Error sending message: {why:?}");
+        error!("Error sending message: {why:?}");
     }
 
     Ok(())

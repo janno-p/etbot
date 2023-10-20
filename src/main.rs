@@ -8,9 +8,13 @@ use internal::discord;
 use internal::handler::Handler;
 use internal::settings::Settings;
 use serenity::model::prelude::ChannelId;
+use tracing::instrument;
 
 #[tokio::main]
+#[instrument]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     dotenv().ok();
 
     let settings = Settings::new().expect("Could not load bot settings");

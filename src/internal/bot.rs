@@ -1,5 +1,6 @@
 use serenity::{model::prelude::ChannelId, prelude::TypeMapKey};
 
+#[derive(Debug)]
 pub struct Bot {
     pub database: sqlx::SqlitePool,
     pub potato_channel_id: ChannelId,
