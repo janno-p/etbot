@@ -1,13 +1,14 @@
 use serenity::{
     all::Message,
     builder::{CreateEmbed, CreateMessage},
+    client::ClientBuilder,
     framework::{
         standard::{macros::hook, CommandError},
         StandardFramework,
     },
+    http::HttpBuilder,
     model::{prelude::ChannelId, Color},
     prelude::{Context, GatewayIntents},
-    Client,
 };
 
 use crate::commands::{GENERAL_GROUP, HELP, POTATOGAME_GROUP};
@@ -41,7 +42,12 @@ pub async fn start_client(bot: Bot, handler: Handler, settings: &Settings) {
 
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
 
-    let mut client = Client::builder(&settings.discord.token, intents)
+    let mut http = HttpBuilder::new(&settings.discord.token);
+    if let Some(proxy) = &settings.discord.proxy {
+        http = http.proxy(proxy);
+    }
+
+    let mut client = ClientBuilder::new_with_http(http.build(), intents)
         .event_handler(handler)
         .framework(framework)
         .type_map_insert::<Bot>(bot)
