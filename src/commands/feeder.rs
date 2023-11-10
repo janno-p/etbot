@@ -5,7 +5,7 @@ use serenity::{
     prelude::{Context, Mentionable},
 };
 use sqlx::{Pool, Sqlite};
-use tracing::{instrument, info, error};
+use tracing::{error, info, instrument};
 
 use crate::internal::database;
 

@@ -16,6 +16,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     dotenv().ok();
+    dotenv::from_filename(".env.local").ok();
 
     let settings = Settings::new().expect("Could not load bot settings");
 

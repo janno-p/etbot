@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use chrono::Utc;
 use serenity::model::prelude::UserId;
 use sqlx::{Pool, Sqlite};
@@ -91,7 +93,7 @@ pub async fn update_player(player: &mut Player, database: &Pool<Sqlite>) -> bool
 
 #[instrument]
 pub async fn load_leaderboard(database: &Pool<Sqlite>) -> Vec<(UserId, i64, usize, usize)> {
-    sqlx::query_as!(
+    let grouped_by_balance: BTreeMap<i64, Vec<UserId>> = sqlx::query_as!(
         Player,
         "SELECT discord_user_id, balance, last_feed_ts, version FROM players ORDER BY balance DESC"
     )
@@ -105,30 +107,21 @@ pub async fn load_leaderboard(database: &Pool<Sqlite>) -> Vec<(UserId, i64, usiz
             p.balance,
         )
     })
-    .enumerate()
-    .fold(
-        (vec![], 0),
-        |(mut acc, pos): (Vec<(UserId, i64, usize, usize)>, usize), (i, (user_id, balance))| {
-            match acc.last() {
-                Some(&e) if e.1 == balance => {
-                    acc.push((user_id, balance, pos, pos));
-                    (acc, pos)
-                }
-                Some(_) => {
-                    for n in pos..(i + 1) {
-                        if let Some(q) = acc.get_mut(n) {
-                            q.3 = i;
-                        }
-                    }
-                    acc.push((user_id, balance, i + 1, i + 1));
-                    (acc, i + 1)
-                }
-                None => {
-                    acc.push((user_id, balance, 1, 1));
-                    (acc, 1)
-                }
-            }
-        },
-    )
-    .0
+    .fold(BTreeMap::new(), |mut acc, (user_id, balance)| {
+        acc.entry(balance).or_default().push(user_id);
+        acc
+    });
+    grouped_by_balance
+        .iter()
+        .rev()
+        .fold(Vec::new(), |mut acc: Vec<_>, (balance, user_ids)| {
+            let min_pos = acc.len() + 1;
+            let max_pos = min_pos + user_ids.len() - 1;
+            acc.extend(
+                user_ids
+                    .iter()
+                    .map(|user_id| (*user_id, *balance, min_pos, max_pos)),
+            );
+            acc
+        })
 }

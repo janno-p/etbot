@@ -4,7 +4,7 @@ use serenity::{
     model::prelude::Ready,
     prelude::{Context, EventHandler},
 };
-use tracing::{instrument, error};
+use tracing::{error, instrument};
 
 use super::bot::Bot;
 

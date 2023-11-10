@@ -10,7 +10,7 @@ use serenity::{
     model::{prelude::ChannelId, Color},
     prelude::{Context, GatewayIntents},
 };
-use tracing::{instrument, error};
+use tracing::{error, instrument};
 
 use crate::commands::{GENERAL_GROUP, HELP, POTATOGAME_GROUP};
 
