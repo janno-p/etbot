@@ -39,9 +39,16 @@ pub async fn leaderboard(ctx: &Context, msg: &Message) -> CommandResult {
                 format!("-{}.", to)
             };
             let display_name = display_names.get(i).unwrap();
+            let emoji = match (from, balance) {
+                (1, _) => ":first_place:",
+                (2, _) => ":second_place:",
+                (3, _) => ":third_place:",
+                (_, 0) => &bot.zero_points_emoji,
+                _ => "",
+            };
             embed.field(
                 format!("#{}.{} {}", from, suff, display_name),
-                balance.to_string(),
+                format!("{} {}", emoji, balance),
                 false,
             )
         },

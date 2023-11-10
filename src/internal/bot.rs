@@ -5,6 +5,7 @@ pub struct Bot {
     pub database: sqlx::SqlitePool,
     pub potato_channel_id: ChannelId,
     pub potato_amount: i64,
+    pub zero_points_emoji: String,
 }
 
 impl Bot {
@@ -12,11 +13,13 @@ impl Bot {
         database: sqlx::SqlitePool,
         potato_channel_id: ChannelId,
         potato_amount: i64,
+        zero_points_emoji: String,
     ) -> Self {
         Self {
             database,
             potato_channel_id,
             potato_amount,
+            zero_points_emoji,
         }
     }
 }

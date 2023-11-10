@@ -24,6 +24,8 @@ pub struct PotatoFeeder {
     #[serde(deserialize_with = "deserialize_duration")]
     interval: Duration,
     pub amount: i64,
+    #[serde(alias = "zero-points-emoji")]
+    pub zero_points_emoji: String,
 }
 
 #[allow(unused)]

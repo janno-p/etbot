@@ -27,6 +27,7 @@ async fn main() {
         database,
         ChannelId::new(settings.potato_feeder.channel_id),
         settings.potato_feeder.amount,
+        settings.potato_feeder.zero_points_emoji.clone(),
     );
 
     discord::start_client(bot, Handler, &settings).await;

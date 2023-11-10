@@ -7,4 +7,5 @@ token = ""
 [potato-feeder]
 channel-id = 0
 interval = "7d"
-amount = 2000
+amount = 2023
+zero-points-emoji = "<:priidik:1077134556559314974>"
