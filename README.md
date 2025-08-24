@@ -3,6 +3,9 @@
 ## Database
 
 ```sh
+# Install sqlx CLI
+cargo install sqlx-cli
+
 # Create database
 sqlx database create
 

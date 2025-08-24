@@ -4,40 +4,44 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chrono = "0.4.31"
+chrono = "0.4.41"
 dotenv = "0.15.0"
-duration-str = "0.7.0"
-rand = "0.8.5"
-tracing = "0.1.40"
-tracing-subscriber = "0.3.17"
+duration-str = "0.17.0"
+rand = "0.9.2"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
 
 [dependencies.config]
-version = "0.13.1"
+version = "0.15.14"
 features = [
     "toml"
 ]
 
+[dependencies.poise]
+version = "0.6.1"
+
 [dependencies.serde]
-version = "1.0.189"
+version = "1.0.219"
 
 [dependencies.serenity]
-git = "https://github.com/serenity-rs/serenity"
-branch = "next"
-# version = "0.11.6"
+version = "0.12.4"
 default-features = false
-features = [
-    "cache",
-    "gateway",
-    "rustls_backend",
-    "standard_framework"
-]
+
+# [dependencies.serenity]
+# git = "https://github.com/serenity-rs/serenity"
+# branch = "next"
+# version = "0.12.4"
+# default-features = false
+# features = [
+#     "cache",
+#     "gateway",
+#     "rustls_backend",
+#     "standard_framework"
+# ]
 
 [dependencies.sqlx]
-version = "0.7.2"
-features = [
-    "runtime-tokio-rustls",
-    "sqlite",
-]
+version = "0.8.6"
+features = ["runtime-tokio-rustls", "sqlite"]
 
 [dependencies.tokio]
 version = "1.33.0"

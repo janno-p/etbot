@@ -1,60 +1,82 @@
-use serenity::{
-    all::Message,
-    builder::{CreateEmbed, CreateMessage},
-    client::ClientBuilder,
-    framework::{
-        standard::{macros::hook, CommandError},
-        StandardFramework,
-    },
-    http::HttpBuilder,
-    model::{prelude::ChannelId, Color},
-    prelude::{Context, GatewayIntents},
-};
-use tracing::{error, instrument};
+use poise::serenity_prelude as serenity;
+use tracing::{error, info, instrument};
 
-use crate::commands::{GENERAL_GROUP, HELP, POTATOGAME_GROUP};
+use super::data::{Context, Data, Error};
+use super::settings::Settings;
 
-use super::handler::Handler;
-use super::{bot::Bot, settings::Settings};
-
-#[hook]
-#[instrument]
-async fn before_hook(ctx: &Context, msg: &Message, _: &str) -> bool {
-    let data = ctx.data.read().await;
-    let bot = data.get::<Bot>().unwrap();
-    msg.channel_id == bot.potato_channel_id
+#[instrument(skip(_framework))]
+async fn event_handler(
+    ctx: &serenity::Context,
+    event: &serenity::FullEvent,
+    _framework: poise::FrameworkContext<'_, Data, Error>,
+    data: &Data,
+) -> Result<(), Error> {
+    if let serenity::FullEvent::Ready { data_about_bot, .. } = event {
+        info!("Logged in as {}", data_about_bot.user.name);
+        data.feeder.start(ctx.clone());
+    }
+    Ok(())
 }
 
-#[hook]
 #[instrument]
-async fn after_hook(_: &Context, _: &Message, cmd_name: &str, err: Result<(), CommandError>) {
-    if let Err(why) = err {
-        error!("Error in {}: {:?}", cmd_name, why);
+async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
+    match error {
+        poise::FrameworkError::Command { error, ctx, .. } => {
+            println!("Error in command `{}`: {:?}", ctx.command().name, error,);
+        }
+        error => {
+            if let Err(e) = poise::builtins::on_error(error).await {
+                println!("Error while handling error: {}", e)
+            }
+        }
     }
 }
 
 #[instrument]
-pub async fn start_client(bot: Bot, handler: Handler, settings: &Settings) {
-    let framework = StandardFramework::new()
-        .help(&HELP)
-        .group(&GENERAL_GROUP)
-        .group(&POTATOGAME_GROUP)
-        .after(after_hook)
-        .before(before_hook);
+pub async fn start_client(data: Data, settings: &Settings) {
+    let framework = poise::Framework::builder()
+        .options(poise::FrameworkOptions {
+            command_check: Some(|ctx: Context| {
+                Box::pin(async move {
+                    Ok(ctx.channel_id() == ctx.data().potato_channel_id)
+                })
+            }),
+            commands: vec![
+                crate::commands::balance::balance(),
+                crate::commands::flip::flip(),
+                crate::commands::give::give(),
+                crate::commands::help::help(),
+                crate::commands::leaderboard::leaderboard(),
+                crate::commands::ping::ping(),
+            ],
+            event_handler: |ctx, event, framework, data| {
+                Box::pin(event_handler(ctx, event, framework, data))
+            },
+            on_error: |error| Box::pin(on_error(error)),
+            prefix_options: poise::PrefixFrameworkOptions {
+                prefix: Some("!".into()),
+                mention_as_prefix: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .setup(|ctx, _ready, framework| {
+            Box::pin(async move {
+                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                Ok(data)
+            })
+        })
+        .build();
 
-    framework.configure(|c| c.prefix("!").on_mention(None));
+    let intents = serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
-    let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
-
-    let mut http = HttpBuilder::new(&settings.discord.token);
+    let mut http = serenity::HttpBuilder::new(&settings.discord.token);
     if let Some(proxy) = &settings.discord.proxy {
         http = http.proxy(proxy);
     }
 
-    let mut client = ClientBuilder::new_with_http(http.build(), intents)
-        .event_handler(handler)
+    let mut client = serenity::ClientBuilder::new_with_http(http.build(), intents)
         .framework(framework)
-        .type_map_insert::<Bot>(bot)
         .await
         .expect("Error creating client");
 
@@ -72,26 +94,26 @@ pub async fn start_client(bot: Bot, handler: Handler, settings: &Settings) {
     }
 }
 
-#[instrument]
-pub async fn success_message(ctx: &Context, channel_id: &ChannelId, message: String) {
-    let embed = CreateEmbed::new()
+pub async fn success_message(ctx: &Context<'_>, message: impl Into<String>) {
+    let embed = serenity::CreateEmbed::new()
         .description(message)
-        .color(Color::DARK_GREEN);
+        .color(serenity::Color::DARK_GREEN);
 
-    let builder = CreateMessage::new().embed(embed);
+    let reply = poise::CreateReply::default().embed(embed);
 
-    if let Err(why) = channel_id.send_message(ctx, builder).await {
+    if let Err(why) = ctx.send(reply).await {
         error!("Error sending message: {why:?}");
     }
 }
 
-#[instrument]
-pub async fn failure_message(ctx: &Context, channel_id: &ChannelId, message: String) {
-    let embed = CreateEmbed::new().description(message).color(Color::RED);
+pub async fn failure_message(ctx: &Context<'_>, message: impl Into<String>) {
+    let embed = serenity::CreateEmbed::new()
+        .description(message)
+        .color(serenity::Color::RED);
 
-    let builder = CreateMessage::new().embed(embed);
+    let reply = poise::CreateReply::default().embed(embed);
 
-    if let Err(why) = channel_id.send_message(ctx, builder).await {
+    if let Err(why) = ctx.send(reply).await {
         error!("Error sending message: {why:?}");
     }
 }

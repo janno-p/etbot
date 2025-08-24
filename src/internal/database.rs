@@ -88,7 +88,7 @@ pub async fn update_player(player: &mut Player, database: &Pool<Sqlite>) -> bool
     .execute(database)
     .await
     .ok()
-    .map_or(false, |result| result.rows_affected() > 0)
+    .map_or_else(|| false, |result| result.rows_affected() > 0)
 }
 
 #[instrument]

@@ -1,15 +1,18 @@
+use poise::serenity_prelude as serenity;
+use rand::Rng;
 use std::str::FromStr;
 
-use rand::Rng;
-use serenity::{
-    framework::standard::{macros::command, Args, CommandResult},
-    model::prelude::Message,
-    prelude::{Context, Mentionable},
+use crate::internal::{
+    data:: {
+        Context,
+        Error,
+    },
+    database,
+    discord,
+    errors::PotatoGameError,
+    model::Player,
+    shared,
 };
-
-use crate::internal::{bot::Bot, database, discord, model::Player};
-
-use super::{errors::PotatoGameError, shared};
 
 #[derive(Debug)]
 enum BetAmount {
@@ -51,45 +54,42 @@ impl FromStr for BetAmount {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, poise::ChoiceParameter)]
 enum CoinSide {
+    #[name = "h"]
+    #[name = "heads"]
     Heads,
+    #[name = "t"]
+    #[name = "tails"]
     Tails,
 }
 
-#[derive(Debug)]
-struct ParseCoinSideError;
-
-impl FromStr for CoinSide {
-    type Err = ParseCoinSideError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().trim() {
-            "h" | "heads" => Ok(CoinSide::Heads),
-            "t" | "tails" => Ok(CoinSide::Tails),
-            _ => Err(ParseCoinSideError),
-        }
-    }
-}
-
-#[command]
-#[description("Flip a coin - game for fun.")]
-#[usage("all|half|some|<amount>[%] h|heads|t|tails")]
-#[example("all tails")]
-#[example("3000 heads")]
-#[example("33% t")]
-pub async fn flip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let _ = msg.channel_id.start_typing(&ctx.http);
-
-    let data = ctx.data.read().await;
-    let bot = data.get::<Bot>().unwrap();
-
-    match (args.single::<BetAmount>(), args.single::<CoinSide>()) {
-        (Ok(bet_amount), Ok(coin_side)) => {
-            process(ctx, msg, bot, &bet_amount, &coin_side).await?;
+/// Flip a coin - game for fun.
+/// 
+/// Usage: `all|half|some|<amount>[%] h|heads|t|tails`
+/// 
+/// Example: `!flip all tails`
+/// Example: `!flip 3000 heads`
+/// Example: `!flip 33% t`
+#[poise::command(
+    broadcast_typing,
+    category = "Potato Game",
+    prefix_command,
+)]
+pub async fn flip(
+    ctx: Context<'_>,
+    #[description = "The amount you want to bet on"] bet_amount_str: String,
+    #[description = "The coin side you want to choose"] coin_side: CoinSide,
+) -> Result<(), Error> {
+    match BetAmount::from_str(&bet_amount_str) {
+        Ok(bet_amount) => {
+            process(ctx, &bet_amount, &coin_side).await?;
         }
         _ => {
-            msg.reply(ctx, "Ei saa aru, mida sa teha tahad!").await?;
+            let reply = poise::CreateReply::default()
+                .content("Ei saa aru, mida sa teha tahad!");
+
+            ctx.send(reply).await?;
         }
     }
 
@@ -97,42 +97,35 @@ pub async fn flip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 }
 
 async fn process(
-    ctx: &Context,
-    msg: &Message,
-    bot: &Bot,
+    ctx: Context<'_>,
     bet_amount: &BetAmount,
     coin_side: &CoinSide,
-) -> CommandResult {
-    let user_id = msg.author.id.to_string();
-    let user_mention = msg.author.mention();
+) -> Result<(), Error> {
+    let user_id = ctx.author().id.to_string();
+    let user_mention = serenity::Mention::from(ctx.author().id);
 
-    let player = database::find_player(&user_id, &bot.database).await;
+    let player = database::find_player(&user_id, &ctx.data().database).await;
 
     let mut player = match player {
         Some(player) => player,
         None => {
-            shared::create_new_player(ctx, &msg.author.id, &msg.channel_id, &bot.database).await?
+            shared::create_new_player(&ctx, &ctx.author().id, &ctx.data().database).await?
         }
     };
 
     let amount = calculate_amount(bet_amount, &player);
 
     if amount < 2 {
-        let message = format!("{} Minimaalne panus on 2 :potato:.", user_mention);
-        discord::failure_message(ctx, &msg.channel_id, message).await;
+        discord::failure_message(&ctx, format!("{} Minimaalne panus on 2 :potato:.", user_mention)).await;
         return Ok(());
     }
 
     if amount > player.balance {
-        let message = format!(
-            "{} Sul pole panuse tegemiseks piisavalt :potato:.",
-            user_mention
-        );
-        discord::failure_message(ctx, &msg.channel_id, message).await;
+        discord::failure_message(&ctx, format!("{} Sul pole panuse tegemiseks piisavalt :potato:.", user_mention)).await;
         return Ok(());
     }
 
-    let toss_result = if rand::thread_rng().gen::<bool>() {
+    let toss_result = if rand::rng().random::<bool>() {
         CoinSide::Heads
     } else {
         CoinSide::Tails
@@ -145,7 +138,7 @@ async fn process(
         player.balance -= amount;
     }
 
-    if !database::update_player(&mut player, &bot.database).await {
+    if !database::update_player(&mut player, &ctx.data().database).await {
         return Err(Box::new(PotatoGameError::ConcurrencyError));
     }
 
@@ -161,16 +154,11 @@ async fn process(
                 user_mention, amount
             )
         };
-        discord::failure_message(ctx, &msg.channel_id, message).await;
+        discord::failure_message(&ctx, message).await;
         return Ok(());
     }
 
-    let message = format!(
-        "{} Palju õnne! Võitsid {} :potato:",
-        user_mention,
-        (amount * 2)
-    );
-    discord::success_message(ctx, &msg.channel_id, message).await;
+    discord::success_message(&ctx, format!("{} Palju õnne! Võitsid {} :potato:", user_mention, (amount * 2))).await;
 
     Ok(())
 }
@@ -179,7 +167,7 @@ fn calculate_amount(bet_amount: &BetAmount, player: &Player) -> i64 {
     match bet_amount {
         BetAmount::All => player.balance,
         BetAmount::Half => player.balance / 2,
-        BetAmount::Some => rand::thread_rng().gen_range(2i64..=player.balance),
+        BetAmount::Some => rand::rng().random_range(2i64..=player.balance),
         BetAmount::Specific(v) => *v,
         BetAmount::Percentage(v) => (*v) as i64 * player.balance / 100i64,
     }

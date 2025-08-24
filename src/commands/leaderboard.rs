@@ -1,23 +1,20 @@
-use serenity::{
-    builder::{CreateEmbed, CreateMessage},
-    framework::standard::{macros::command, CommandResult},
-    model::{prelude::Message, Color},
-    prelude::Context,
-};
+use poise::serenity_prelude as serenity;
 use tracing::error;
 
-use crate::internal::{bot::Bot, database};
+use crate::internal::{
+    data::{Context, Error},
+    database,
+};
 
-#[command]
-#[aliases("lb")]
-#[description("Displays leaderboard.")]
-pub async fn leaderboard(ctx: &Context, msg: &Message) -> CommandResult {
-    let _ = msg.channel_id.start_typing(&ctx.http);
-
-    let data = ctx.data.read().await;
-    let bot = data.get::<Bot>().unwrap();
-
-    let leaderboard = database::load_leaderboard(&bot.database).await;
+/// Displays leaderboard.
+#[poise::command(
+    prefix_command,
+    aliases("lb"),
+    broadcast_typing,
+    category = "Potato Game",
+)]
+pub async fn leaderboard(ctx: Context<'_>) -> Result<(), Error> {
+    let leaderboard = database::load_leaderboard(&ctx.data().database).await;
 
     let mut display_names = Vec::new();
     for &(user_id, _, _, _) in leaderboard.iter() {
@@ -29,11 +26,11 @@ pub async fn leaderboard(ctx: &Context, msg: &Message) -> CommandResult {
     let display_names = display_names;
 
     let embed = leaderboard.iter().enumerate().fold(
-        CreateEmbed::new()
+        serenity::CreateEmbed::new()
             .title(":potato: Leaderboard")
-            .color(Color::DARK_GREEN),
+            .color(serenity::Color::DARK_GREEN),
         |embed, (i, (_, balance, from, to))| {
-            let suff = if from == to {
+            let suffix = if from == to {
                 "".to_string()
             } else {
                 format!("-{}.", to)
@@ -43,20 +40,21 @@ pub async fn leaderboard(ctx: &Context, msg: &Message) -> CommandResult {
                 (1, _) => ":first_place:",
                 (2, _) => ":second_place:",
                 (3, _) => ":third_place:",
-                (_, 0) => &bot.zero_points_emoji,
+                (_, 0) => &ctx.data().zero_points_emoji,
                 _ => "",
             };
             embed.field(
-                format!("#{}.{} {}", from, suff, display_name),
+                format!("#{}.{} {}", from, suffix, display_name),
                 format!("{} {}", emoji, balance),
                 false,
             )
         },
     );
 
-    let message = CreateMessage::new().embed(embed);
+    let reply = poise::CreateReply::default()
+        .embed(embed);
 
-    if let Err(why) = msg.channel_id.send_message(ctx, message).await {
+    if let Err(why) = ctx.send(reply).await {
         error!("Error sending message: {why:?}");
     }
 

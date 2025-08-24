@@ -1,22 +1,20 @@
-use std::collections::HashSet;
-
-use serenity::{
-    framework::standard::{
-        help_commands, macros::help, Args, CommandGroup, CommandResult, HelpOptions,
-    },
-    model::prelude::{Message, UserId},
-    prelude::Context,
+use crate::internal::data::{
+    Context,
+    Error,
 };
 
-#[help]
-async fn help(
-    ctx: &Context,
-    msg: &Message,
-    args: Args,
-    help_options: &'static HelpOptions,
-    groups: &[&'static CommandGroup],
-    owners: HashSet<UserId>,
-) -> CommandResult {
-    let _ = help_commands::with_embeds(ctx, msg, args, help_options, groups, owners).await;
+#[poise::command(
+    category = "General",
+    prefix_command,
+)]
+pub async fn help(
+    ctx: Context<'_>,
+    command: Option<String>,
+) -> Result<(), Error> {
+    let configuration = poise::builtins::HelpConfiguration {
+        
+        ..Default::default()
+    };
+    poise::builtins::help(ctx, command.as_deref(), configuration).await?;
     Ok(())
 }

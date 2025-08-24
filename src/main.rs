@@ -2,10 +2,9 @@ mod commands;
 mod internal;
 
 use dotenv::dotenv;
-use internal::bot::Bot;
+use internal::data::Data;
 use internal::database;
 use internal::discord;
-use internal::handler::Handler;
 use internal::settings::Settings;
 use serenity::model::prelude::ChannelId;
 use tracing::instrument;
@@ -23,12 +22,12 @@ async fn main() {
     let database = database::init(&settings).await;
     database::migrate(&database).await;
 
-    let bot = Bot::new(
+    let data = Data::new(
         database,
         ChannelId::new(settings.potato_feeder.channel_id),
         settings.potato_feeder.amount,
         settings.potato_feeder.zero_points_emoji.clone(),
     );
 
-    discord::start_client(bot, Handler, &settings).await;
+    discord::start_client(data, &settings).await;
 }

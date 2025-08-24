@@ -1,14 +1,19 @@
-use serenity::{model::prelude::ChannelId, prelude::TypeMapKey};
+use serenity::all::ChannelId;
+
+use crate::internal::feeder::Feeder;
 
 #[derive(Debug)]
-pub struct Bot {
+pub struct Data {
     pub database: sqlx::SqlitePool,
     pub potato_channel_id: ChannelId,
-    pub potato_amount: i64,
     pub zero_points_emoji: String,
+    pub feeder: Feeder,
 }
 
-impl Bot {
+pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Context<'a> = poise::Context<'a, Data, Error>;
+
+impl Data {
     pub fn new(
         database: sqlx::SqlitePool,
         potato_channel_id: ChannelId,
@@ -16,14 +21,10 @@ impl Bot {
         zero_points_emoji: String,
     ) -> Self {
         Self {
-            database,
+            database: database.clone(),
             potato_channel_id,
-            potato_amount,
             zero_points_emoji,
+            feeder: Feeder::new(potato_channel_id, potato_amount, database),
         }
     }
-}
-
-impl TypeMapKey for Bot {
-    type Value = Bot;
 }
