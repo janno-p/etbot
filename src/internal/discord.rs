@@ -34,12 +34,12 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 
 #[instrument]
 pub async fn start_client(data: Data, settings: &Settings) {
+    let channel_id = data.potato_channel_id;
+
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             command_check: Some(|ctx: Context| {
-                Box::pin(async move {
-                    Ok(ctx.channel_id() == ctx.data().potato_channel_id)
-                })
+                Box::pin(async move { Ok(ctx.channel_id() == ctx.data().potato_channel_id) })
             }),
             commands: vec![
                 crate::commands::balance::balance(),
@@ -68,7 +68,8 @@ pub async fn start_client(data: Data, settings: &Settings) {
         })
         .build();
 
-    let intents = serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
+    let intents =
+        serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
     let mut http = serenity::HttpBuilder::new(&settings.discord.token);
     if let Some(proxy) = &settings.discord.proxy {
@@ -81,11 +82,20 @@ pub async fn start_client(data: Data, settings: &Settings) {
         .expect("Error creating client");
 
     let shard_manager = client.shard_manager.clone();
+    let http = client.http.clone();
 
     tokio::spawn(async move {
         tokio::signal::ctrl_c()
             .await
             .expect("Could not register ctrl+c handler");
+
+        let msg = serenity::CreateMessage::new()
+            .content("@everyone Pean korra ära käima! <:aliexpress:1050384232935063562>");
+
+        if let Err(why) = channel_id.send_message(http, msg).await {
+            error!("Error sending message: {why:?}");
+        }
+
         shard_manager.shutdown_all().await;
     });
 

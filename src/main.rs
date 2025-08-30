@@ -1,9 +1,9 @@
 mod commands;
+mod database;
 mod internal;
 
 use dotenv::dotenv;
 use internal::data::Data;
-use internal::database;
 use internal::discord;
 use internal::settings::Settings;
 use serenity::model::prelude::ChannelId;

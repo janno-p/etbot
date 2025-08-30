@@ -1,18 +1,13 @@
+use chrono::Utc;
 use poise::serenity_prelude as serenity;
 use rand::Rng;
 use std::str::FromStr;
 
-use crate::internal::{
-    data:: {
-        Context,
-        Error,
-    },
-    database,
-    discord,
-    errors::PotatoGameError,
-    model::Player,
-    shared,
-};
+use crate::database::players::{find_player, update_player, Player};
+use crate::internal::data::{Context, Error};
+use crate::internal::discord;
+use crate::internal::errors::PotatoGameError;
+use crate::internal::shared;
 
 #[derive(Debug)]
 enum BetAmount {
@@ -65,17 +60,13 @@ enum CoinSide {
 }
 
 /// Flip a coin - game for fun.
-/// 
+///
 /// Usage: `all|half|some|<amount>[%] h|heads|t|tails`
-/// 
+///
 /// Example: `!flip all tails`
 /// Example: `!flip 3000 heads`
 /// Example: `!flip 33% t`
-#[poise::command(
-    broadcast_typing,
-    category = "Potato Game",
-    prefix_command,
-)]
+#[poise::command(broadcast_typing, category = "Potato Game", prefix_command)]
 pub async fn flip(
     ctx: Context<'_>,
     #[description = "The amount you want to bet on"] bet_amount_str: String,
@@ -86,8 +77,7 @@ pub async fn flip(
             process(ctx, &bet_amount, &coin_side).await?;
         }
         _ => {
-            let reply = poise::CreateReply::default()
-                .content("Ei saa aru, mida sa teha tahad!");
+            let reply = poise::CreateReply::default().content("Ei saa aru, mida sa teha tahad!");
 
             ctx.send(reply).await?;
         }
@@ -104,24 +94,33 @@ async fn process(
     let user_id = ctx.author().id.to_string();
     let user_mention = serenity::Mention::from(ctx.author().id);
 
-    let player = database::find_player(&user_id, &ctx.data().database).await;
+    let player = find_player(&user_id, &ctx.data().database).await;
 
     let mut player = match player {
         Some(player) => player,
-        None => {
-            shared::create_new_player(&ctx, &ctx.author().id, &ctx.data().database).await?
-        }
+        None => shared::create_new_player(&ctx, &ctx.author().id, &ctx.data().database).await?,
     };
 
     let amount = calculate_amount(bet_amount, &player);
 
     if amount < 2 {
-        discord::failure_message(&ctx, format!("{} Minimaalne panus on 2 :potato:.", user_mention)).await;
+        discord::failure_message(
+            &ctx,
+            format!("{} Minimaalne panus on 2 :potato:.", user_mention),
+        )
+        .await;
         return Ok(());
     }
 
     if amount > player.balance {
-        discord::failure_message(&ctx, format!("{} Sul pole panuse tegemiseks piisavalt :potato:.", user_mention)).await;
+        discord::failure_message(
+            &ctx,
+            format!(
+                "{} Sul pole panuse tegemiseks piisavalt :potato:.",
+                user_mention
+            ),
+        )
+        .await;
         return Ok(());
     }
 
@@ -138,7 +137,9 @@ async fn process(
         player.balance -= amount;
     }
 
-    if !database::update_player(&mut player, &ctx.data().database).await {
+    player.idle_since_ts = Utc::now().timestamp();
+
+    if !update_player(&mut player, &ctx.data().database).await {
         return Err(Box::new(PotatoGameError::ConcurrencyError));
     }
 
@@ -158,7 +159,15 @@ async fn process(
         return Ok(());
     }
 
-    discord::success_message(&ctx, format!("{} Palju õnne! Võitsid {} :potato:", user_mention, (amount * 2))).await;
+    discord::success_message(
+        &ctx,
+        format!(
+            "{} Palju õnne! Võitsid {} :potato:",
+            user_mention,
+            (amount * 2)
+        ),
+    )
+    .await;
 
     Ok(())
 }
